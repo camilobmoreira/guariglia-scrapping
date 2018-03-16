@@ -99,3 +99,10 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+#Pycharm files
+.idea
+
+#Arquivos de teste
+resultado.html
+resultado.txt
