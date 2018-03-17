@@ -9,15 +9,20 @@ import re
 param_obs = 'Pronto em m'
 param_valor_max = 99999999
 
-
 # specify the url
-quote_page = 'http://www.guariglia.com.br/?ir=lotes_veiculos_nsl&leilao=1570'
+leilao = '1570'
+pagina_base = 'http://www.guariglia.com.br/'
+quote_page = pagina_base + '?ir=lotes_veiculos_nsl&leilao=' + leilao
 
 # query the website and return the html to the variable ‘page'
 page = urllib2.urlopen(quote_page)
 
 # parse the html using beautiful soup and store in variable `soup`
 soup = BeautifulSoup(page, 'html.parser')
+
+paginas = soup.find_all('a', href=re.compile('ir=lotes_veiculos_nsl&leilao=1570&pag'))
+
+#for pagina in paginas:
 
 # Take out the <div> of name and get its value
 #table_box = soup.find_all('table', attrs={'width':'1000', 'border':'0'})
@@ -42,7 +47,7 @@ for tr in table_box:
 
     #Verifica se o valor atual esta de acordo com o parametro passado
     if param_valor_max is not None and (lance_inicial > param_valor_max or maior_lance > param_valor_max):
-        continue    
+        continue
 
     #Pega a descricao (modelo/marca) do veiculo
     marca_modelo = td.find('b').find('font').text.strip()
