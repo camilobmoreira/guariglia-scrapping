@@ -33,11 +33,12 @@ for pag_leilao in pag_leiloes:
     # parse the html using beautiful soup and store in variable `soup`
     soup = BeautifulSoup(page, 'html.parser')
     
-    if 'Lotes deste leilão ainda não foram lançados' in soup:
+    if ('otes deste leil').encode('utf-8') in soup.text.encode('utf-8'):
         break
         
     #Pega o numero do leilao
-    leilao = pag_leilao.strip('&leilao=')[1]
+    #leilao = pag_leilao.strip('leilao=')
+    leilao = '1570'
 
     #Cria um arquivo csv para cada leilao
     csv_leilao = open('dados_leilao_' + leilao + '.csv', 'w')
@@ -91,8 +92,14 @@ for pag_leilao in pag_leiloes:
             if param_valor_max is not None and (lance_inicial > param_valor_max or maior_lance > param_valor_max):
                 continue
 
-            #Pega a descricao (modelo/marca) do veiculo
-            marca_modelo = td.find('b').find('font').text.encode('utf-8').strip()
+            # Pega a descricao (modelo/marca) do veiculo
+            marca_modelo = td.find_all('b')
+            lote = ''
+            if u'Lote' in marca_modelo[0].text:
+                lote = marca_modelo[1].text.encode('utf-8').strip()
+                marca_modelo = marca_modelo[2].find('font').text.encode('utf-8').strip()
+            else:
+                marca_modelo = marca_modelo[1].find('font').text.encode('utf-8').strip()
 
             # Pega o final da placa do carro
             placa = td.find(text=re.compile('Final')).encode('utf-8').strip()
@@ -101,12 +108,10 @@ for pag_leilao in pag_leiloes:
             ano = td.find('font', attrs={'color':'#505050'})
             ano = str(td).split((ano).encode('utf-8'))[1].split((placa).encode('utf-8'))[0].split('|')[0].strip()
             
-            lote = ''
-            
             writer.writerow([marca_modelo, ano, placa, lance_inicial, maior_lance, obs, lote])
         
         #Espera cinco segundos para não sobrecarregar o site
-        time.sleep(2)
+        #time.sleep(2)
 
     #Fecha arquivo csv deste leilao
     csv_leilao.close()
