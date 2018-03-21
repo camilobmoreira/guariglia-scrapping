@@ -10,6 +10,7 @@ import time
 #Parametros para busca no site
 param_obs = 'Pronto em m'
 param_valor_max = 99999999
+param_acessorios = 'DH - AR - VE - TE - MANUAL - CHAVE RESERVA'
 
 # specify the url
 pagina_base = 'http://www.guariglia.com.br/'
@@ -32,27 +33,27 @@ for pag_leilao in pag_leiloes:
 
     # parse the html using beautiful soup and store in variable `soup`
     soup = BeautifulSoup(page, 'html.parser')
-    
+
+    #Procura por parte do texto 'Lotes deste leilão ainda não foram lançados'
     if ('otes deste leil').encode('utf-8') in soup.text.encode('utf-8'):
         break
         
     #Pega o numero do leilao
-    #leilao = pag_leilao.strip('leilao=')
-    leilao = '1570'
+    leilao = pag_leilao[pag_leilao.encode('utf-8').index('leilao='):].replace('leilao=', '')
 
     #Cria um arquivo csv para cada leilao
     csv_leilao = open('dados_leilao_' + leilao + '.csv', 'w')
 
     writer = csv.writer(csv_leilao)
 
-    writer.writerow(['marca_modelo', 'ano', 'placa', 'lance_inicial', 'maior_lance', 'obs', 'lote'])
+    writer.writerow(['marca_modelo', 'ano', 'placa', 'acessorios','lance_inicial', 'maior_lance', 'obs', 'lote'])
 
     paginas = []
     paginas.append(pag_leilao)
 
     div_paginas = soup.find('div', attrs={'align':'center'})
 
-    for pag in div_paginas.find_all('a', href=re.compile('ir=lotes_veiculos_nsl&leilao=1570&pag')):
+    for pag in div_paginas.find_all('a', href=re.compile('ir=lotes_veiculos_nsl&leilao=')):
         paginas.append(pagina_base + pag['href'])
 
     #Remove o ultimo item da lista (Link 'Proxima')     
@@ -92,6 +93,11 @@ for pag_leilao in pag_leiloes:
             if param_valor_max is not None and (lance_inicial > param_valor_max or maior_lance > param_valor_max):
                 continue
 
+            #Pega acessorios
+            acessorios = td.find(text=re.compile('DH - AR'))
+            if acessorios is not None:
+                acessorios = acessorios.encode('utf-8').split(' - ')
+
             # Pega a descricao (modelo/marca) do veiculo
             marca_modelo = td.find_all('b')
             lote = ''
@@ -108,7 +114,7 @@ for pag_leilao in pag_leiloes:
             ano = td.find('font', attrs={'color':'#505050'})
             ano = str(td).split((ano).encode('utf-8'))[1].split((placa).encode('utf-8'))[0].split('|')[0].strip()
             
-            writer.writerow([marca_modelo, ano, placa, lance_inicial, maior_lance, obs, lote])
+            writer.writerow([marca_modelo, ano, placa, acessorios, lance_inicial, maior_lance, obs, lote])
         
         #Espera cinco segundos para não sobrecarregar o site
         #time.sleep(2)
