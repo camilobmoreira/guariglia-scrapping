@@ -12,11 +12,32 @@ param_obs = 'Pronto em m'
 param_valor_max = 99999999
 
 # specify the url
-leiloes = ['1570', '1571']
+pagina_base = 'http://www.guariglia.com.br/'
+pagina_leiloes = pagina_base + '?ir=filtraleiloes&tp=vei'
 
-for leilao in leiloes:
-    pagina_base = 'http://www.guariglia.com.br/'
-    quote_page = pagina_base + '?ir=lotes_veiculos_nsl&leilao=' + leilao
+# query the website and return the html to the variable ‘page'
+page = urllib2.urlopen(pagina_leiloes)
+
+# parse the html using beautiful soup and store in variable `soup`
+soup = BeautifulSoup(page, 'html.parser')
+pag_leiloes = []
+
+for pag in soup.find_all('td', onclick=re.compile('ir=lotes_veiculos_nsl&leilao=')):
+    pag = pag['onclick'].encode('utf-8').replace('location.href=', '').replace('\'', '')
+    pag_leiloes.append(pagina_base + pag)
+
+for pag_leilao in pag_leiloes:
+    # query the website and return the html to the variable ‘page'
+    page = urllib2.urlopen(pag_leilao)
+
+    # parse the html using beautiful soup and store in variable `soup`
+    soup = BeautifulSoup(page, 'html.parser')
+    
+    if 'Lotes deste leilão ainda não foram lançados' in soup:
+        break
+        
+    #Pega o numero do leilao
+    leilao = pag_leilao.strip('&leilao=')[1]
 
     #Cria um arquivo csv para cada leilao
     csv_leilao = open('dados_leilao_' + leilao + '.csv', 'w')
@@ -25,14 +46,8 @@ for leilao in leiloes:
 
     writer.writerow(['marca_modelo', 'ano', 'placa', 'lance_inicial', 'maior_lance', 'obs', 'lote'])
 
-    # query the website and return the html to the variable ‘page'
-    page = urllib2.urlopen(quote_page)
-
-    # parse the html using beautiful soup and store in variable `soup`
-    soup = BeautifulSoup(page, 'html.parser')
-
     paginas = []
-    paginas.append(quote_page)
+    paginas.append(pag_leilao)
 
     div_paginas = soup.find('div', attrs={'align':'center'})
 
