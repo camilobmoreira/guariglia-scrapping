@@ -6,12 +6,83 @@ from bs4 import BeautifulSoup
 import re
 import csv
 import time
+import getopt
+import sys
 
-#Parametros para busca no site
-param_obs = 'Pronto em m'
-param_valor_max = 99999999
-param_acessorios = 'DH - AR - VE - TE - MANUAL - CHAVE RESERVA'
+# read commandline arguments, first
+full_cmd_arguments = sys.argv
 
+# - further arguments
+argument_list = full_cmd_arguments[1:]
+
+unix_options = 'a:A:ho:O:v:V:'
+gnu_options = ['ano-min=', 'ano-max=', 'help', 'marca-modelo=', 'obs=', 'opc=', 'valor-min=', 'valor-max=', 'version']  
+
+#Define parametros de busca
+param_ano_min = None
+param_ano_max = None
+param_marca = None
+param_obs = None
+param_opc_acessorios = None
+param_valor_min = None
+param_valor_max = None
+
+help_text = '''
+usage: app.py [options]
+  options:
+    -a,     --ano-min       Define ano minimo da busca *
+    -A,     --ano-max       Define ano maximo da busca *
+    -h,     --help          Mostra esse texto
+    -o,     --obs           Define conteudo do campo obs da busca **
+    -O,     --opc           Define lista de acessorios buscando ****
+    -m,     --marca-modelo  Define marca/modelo da busca **
+    -v,     --valor-min     Define valor minimo da busca ***
+    -V,     --valor-max     Define valor minimo da busca ***
+    
+    * O ano deve ser informado por completo. Exemplo: 2010 ou 1990
+    ** Todos os valores de texto devem ser informados entre aspas caso seja mais de uma palavra e devem ser evitados caracteres especiais, como acentos, cedilha e etc. Exemplo: para buscar \'Documento pronto em maos\', use o texto 'pronto em m' que tera o mesmo efeito.
+    *** Os valores devem ser inseridos com centavos e sem virgula ou ponto. Exemplo: para 10.500,00 use 1050000
+    **** Valores devem ser separados por virgula, dentro de aspas e em maiusculo. Valores possiveis: DH, AR, VE, TE, MANUAL, CHAVE RESERVA. Exemplo: \'DH, AR, VE\'
+'''
+
+__version__ = '1.0'
+
+#Recebe parametros de busca do terminal
+try:  
+    arguments, values = getopt.getopt(argument_list, unix_options, gnu_options)
+    
+    for current_argument, current_value in arguments:  
+        if current_argument in ('-a', '--ano-min'):
+            param_ano_min = int(current_value)
+        elif current_argument in ('-A', '--ano-max'):
+            param_ano_max = int(current_value)
+        elif current_argument in ('-h', '--help'):
+            print (help_text)
+            sys.exit()
+        elif current_argument in ('-o', '--obs'):
+            param_obs = current_value.lower()
+        elif current_argument in ('-O', '--opc'):
+            temp_opc_acessorios = current_value.split(',')
+            param_opc_acessorios = []
+            for param in temp_opc_acessorios:
+                param_opc_acessorios.append(param.strip())
+        elif current_argument in ('-m', '--marca-modelo'):
+            param_marca = current_value
+        elif current_argument in ('-v', '--valor-min'):
+            param_valor_min = int(current_value)
+        elif current_argument in ('-V', '--valor-max'):
+            param_valor_max = int(current_value)
+        elif current_argument == '--version':
+            print('Guariglia Scrapping App Version: ' + __version__)
+            sys.exit()
+
+        
+except getopt.error as err:  
+    # output error, and return with an error code
+    print (str(err))
+    sys.exit(2)
+
+#Inicia execucao do codigo da raspagem    
 # specify the url
 pagina_base = 'http://www.guariglia.com.br/'
 pagina_leiloes = pagina_base + '?ir=filtraleiloes&tp=vei'
@@ -33,14 +104,19 @@ for pag_leilao in pag_leiloes:
 
     # parse the html using beautiful soup and store in variable `soup`
     soup = BeautifulSoup(page, 'html.parser')
-
-    #Procura por parte do texto 'Lotes deste leilão ainda não foram lançados'
-    if ('otes deste leil').encode('utf-8') in soup.text.encode('utf-8'):
-        break
-        
+    
     #Pega o numero do leilao
     leilao = pag_leilao[pag_leilao.encode('utf-8').index('leilao='):].replace('leilao=', '')
 
+
+    #Procura por parte do texto 'Lotes deste leilão ainda não foram lançados'
+    if ('otes deste leil').encode('utf-8') in soup.text.encode('utf-8'):
+        print('Lostes do leilao %s ainda nao foram lancados' %leilao)
+        break
+    #if soup.find('img', attrs={'src':'imagens/andamento.png'}) is not None:
+        #print('Leilao %s ja em andamento' %leilao)
+        #continue
+        
     #Cria um arquivo csv para cada leilao
     csv_leilao = open('dados_leilao_' + leilao + '.csv', 'w')
 
@@ -67,9 +143,8 @@ for pag_leilao in pag_leiloes:
 
         # parse the html using beautiful soup and store in variable `soup`
         soup = BeautifulSoup(page, 'html.parser')
-
-        # Take out the <div> of name and get its value
-        #table_box = soup.find_all('table', attrs={'width':'1000', 'border':'0'})
+        
+        #Pega todas as linhas da tabela contendo informacoes dos veiculos
         table_box = soup.find_all('tr', attrs={'bgcolor':'#F3F4F5'})
 
         for tr in table_box:
@@ -77,10 +152,10 @@ for pag_leilao in pag_leiloes:
             td = tr.find('td', attrs={'width':'100%', 'align': 'left'})
 
             #Pega observação do veiculo
-            obs = td.find('font', attrs={'color':'#008080'}).find('b').text.encode('utf-8').strip()
+            obs = td.find('font', attrs={'color':'#008080'}).find('b').text.encode('utf-8').strip() #fixme
 
             #Verifica se a observacao esta de acordo com o parametro passado
-            if param_obs != None and param_obs not in obs:
+            if param_obs is not None and param_obs not in obs.lower():
                 continue
 
             #Pega lance inicial do veiculo
@@ -92,11 +167,32 @@ for pag_leilao in pag_leiloes:
             #Verifica se o valor atual esta de acordo com o parametro passado
             if param_valor_max is not None and (lance_inicial > param_valor_max or maior_lance > param_valor_max):
                 continue
+            if param_valor_min is not None and lance_inicial < param_valor_min:
+                continue
 
             #Pega acessorios
-            acessorios = td.find(text=re.compile('DH - AR'))
+            acessorios = td.find(text=re.compile(str(param_opc_acessorios).replace('\'', '').replace('[', '').replace(']', '').replace(', ', ' - ').strip())) #fixme 
             if acessorios is not None:
-                acessorios = acessorios.encode('utf-8').split(' - ')
+                temp_acessorios = acessorios.encode('utf-8').split('-')
+                acessorios = []
+                for ace in temp_acessorios:
+                    acessorios.append(ace.strip())
+            else:
+                continue
+            
+            #Verifica se os acessorios do veiculo atendem os parametros da busca
+            if param_opc_acessorios is not None:
+                if acessorios is None or len(acessorios) == 0:
+                    continue
+                else:
+                    brk = False
+                    for param in param_opc_acessorios:
+                        if param not in acessorios:
+                            brk = True
+                            break
+                    if brk:
+                        continue
+            
 
             # Pega a descricao (modelo/marca) do veiculo
             marca_modelo = td.find_all('b')
@@ -106,6 +202,10 @@ for pag_leilao in pag_leiloes:
                 marca_modelo = marca_modelo[2].find('font').text.encode('utf-8').strip()
             else:
                 marca_modelo = marca_modelo[1].find('font').text.encode('utf-8').strip()
+            
+            #Verifica se a marca/modelo do veiculo atende os parametros da busca
+            if param_marca is not None and param_marca.lower() not in marca_modelo.lower():
+                continue
 
             # Pega o final da placa do carro
             placa = td.find(text=re.compile('Final')).encode('utf-8').strip()
@@ -114,10 +214,14 @@ for pag_leilao in pag_leiloes:
             ano = td.find('font', attrs={'color':'#505050'})
             ano = str(td).split((ano).encode('utf-8'))[1].split((placa).encode('utf-8'))[0].split('|')[0].strip()
             
+            #Verifica se o ano atende os parametros de busca
+            if param_ano_min is not None and int(ano.split('/')[0]) < param_ano_min or param_ano_max is not None and int(ano.split('/')[1]) > param_ano_max:
+                continue            
+            
             writer.writerow([marca_modelo, ano, placa, acessorios, lance_inicial, maior_lance, obs, lote])
         
         #Espera cinco segundos para não sobrecarregar o site
-        #time.sleep(2)
+        time.sleep(1)
 
     #Fecha arquivo csv deste leilao
     csv_leilao.close()
