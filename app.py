@@ -15,8 +15,8 @@ full_cmd_arguments = sys.argv
 # - further arguments
 argument_list = full_cmd_arguments[1:]
 
-unix_options = 'a:A:ho:O:v:V:'
-gnu_options = ['ano-min=', 'ano-max=', 'help', 'marca-modelo=', 'obs=', 'opc=', 'valor-min=', 'valor-max=', 'version']  
+unix_options = 'a:A:ho:O:s:t:v:V:'
+gnu_options = ['ano-min=', 'ano-max=', 'help', 'marca-modelo=', 'obs=', 'opc=', 'sleep=', 'timeout=', 'valor-min=', 'valor-max=', 'version']
 
 #Define parametros de busca
 param_ano_min = None
@@ -24,28 +24,33 @@ param_ano_max = None
 param_marca = None
 param_obs = None
 param_opc_acessorios = None
+param_sleep = 5
+param_timeout = 5
 param_valor_min = None
 param_valor_max = None
 
 help_text = '''
 usage: app.py [options]
   options:
-    -a,     --ano-min       Define ano minimo da busca *
-    -A,     --ano-max       Define ano maximo da busca *
+    -a,     --ano-min       Define ano minimo da busca [1]
+    -A,     --ano-max       Define ano maximo da busca [1]
     -h,     --help          Mostra esse texto
-    -o,     --obs           Define conteudo do campo obs da busca **
-    -O,     --opc           Define lista de acessorios buscando ****
-    -m,     --marca-modelo  Define marca/modelo da busca **
-    -v,     --valor-min     Define valor minimo da busca ***
-    -V,     --valor-max     Define valor minimo da busca ***
+    -o,     --obs           Define conteudo do campo obs da busca [2]
+    -O,     --opc           Define lista de acessorios buscando [5]
+    -m,     --marca-modelo  Define marca/modelo da busca [2]
+    -s,     --sleep         Define o tempo entre um request e outro [3]
+    -t,     --timeout       Define o timeout do request [3]
+    -v,     --valor-min     Define valor minimo da busca [4]
+    -V,     --valor-max     Define valor minimo da busca [4]
     
-    * O ano deve ser informado por completo. Exemplo: 2010 ou 1990
-    ** Todos os valores de texto devem ser informados entre aspas caso seja mais de uma palavra e devem ser evitados caracteres especiais, como acentos, cedilha e etc. Exemplo: para buscar \'Documento pronto em maos\', use o texto 'pronto em m' que tera o mesmo efeito.
-    *** Os valores devem ser inseridos com centavos e sem virgula ou ponto. Exemplo: para 10.500,00 use 1050000
-    **** Valores devem ser separados por virgula, dentro de aspas e em maiusculo. Valores possiveis: DH, AR, VE, TE, MANUAL, CHAVE RESERVA. Exemplo: \'DH, AR, VE\'
+    [1] O ano deve ser informado por completo. Exemplo: 2010 ou 1990
+    [2] Todos os valores de texto devem ser informados entre aspas caso seja mais de uma palavra e devem ser evitados caracteres especiais, como acentos, cedilha e etc. Exemplo: para buscar \'Documento pronto em maos\', use o texto 'pronto em m' que tera o mesmo efeito.
+    [3] Valor default: 5
+    [4] Os valores devem ser inseridos com centavos e sem virgula ou ponto. Exemplo: para 10.500,00 use 1050000
+    [5] Valores devem ser separados por virgula, dentro de aspas e em maiusculo. Valores possiveis: DH, AR, VE, TE, MANUAL, CHAVE RESERVA, 5 LUGARES, BASICO. FLEX, GASOLINA, DIESEL. Exemplo: \'DH, AR, VE\'
 '''
 
-__version__ = '1.0'
+__version__ = '1.1'
 
 #Recebe parametros de busca do terminal
 try:  
@@ -53,8 +58,14 @@ try:
     
     for current_argument, current_value in arguments:  
         if current_argument in ('-a', '--ano-min'):
+            if len(current_value) != 4:
+                print('Informe o ano com 4 caracteres. Exemplo 2010 ou 1990')
+                sys.exit(2)
             param_ano_min = int(current_value)
         elif current_argument in ('-A', '--ano-max'):
+            if len(current_value) != 4:
+                print('Informe o ano com 4 caracteres. Exemplo 2010 ou 1990')
+                sys.exit(2)
             param_ano_max = int(current_value)
         elif current_argument in ('-h', '--help'):
             print (help_text)
@@ -68,12 +79,16 @@ try:
                 param_opc_acessorios.append(param.strip())
         elif current_argument in ('-m', '--marca-modelo'):
             param_marca = current_value
+        elif current_argument in ('-s', '--sleep'):
+            param_marca = current_value
+        elif current_argument in ('-t', '--timeout'):
+            param_marca = current_value
         elif current_argument in ('-v', '--valor-min'):
-            param_valor_min = int(current_value)
+            param_valor_min = int(current_value.replace(',', '').replace('.', ''))
         elif current_argument in ('-V', '--valor-max'):
-            param_valor_max = int(current_value)
+            param_valor_max = int(current_value.replace(',', '').replace('.', ''))
         elif current_argument == '--version':
-            print('Guariglia Scrapping App Version: ' + __version__)
+            print('Guariglia Leiloes Scrapping App Version: ' + __version__)
             sys.exit()
 
         
@@ -88,7 +103,7 @@ pagina_base = 'http://www.guariglia.com.br/'
 pagina_leiloes = pagina_base + '?ir=filtraleiloes&tp=vei'
 
 # query the website and return the html to the variable ‘page'
-page = urllib2.urlopen(pagina_leiloes)
+page = urllib2.urlopen(pagina_leiloes, timeout=param_timeout)
 
 # parse the html using beautiful soup and store in variable `soup`
 soup = BeautifulSoup(page, 'html.parser')
@@ -100,7 +115,7 @@ for pag in soup.find_all('td', onclick=re.compile('ir=lotes_veiculos_nsl&leilao=
 
 for pag_leilao in pag_leiloes:
     # query the website and return the html to the variable ‘page'
-    page = urllib2.urlopen(pag_leilao)
+    page = urllib2.urlopen(pag_leilao, timeout=param_timeout)
 
     # parse the html using beautiful soup and store in variable `soup`
     soup = BeautifulSoup(page, 'html.parser')
@@ -139,7 +154,7 @@ for pag_leilao in pag_leiloes:
     for pagina in paginas:
 
         # query the website and return the html to the variable ‘page'
-        page = urllib2.urlopen(pagina)
+        page = urllib2.urlopen(pagina, timeout=param_timeout)
 
         # parse the html using beautiful soup and store in variable `soup`
         soup = BeautifulSoup(page, 'html.parser')
@@ -171,14 +186,18 @@ for pag_leilao in pag_leiloes:
                 continue
 
             #Pega acessorios
-            acessorios = td.find(text=re.compile(str(param_opc_acessorios).replace('\'', '').replace('[', '').replace(']', '').replace(', ', ' - ').strip())) #fixme 
+            acessorios = td.find_all('font', attrs={'color':'#505050'})
+            acessorios = str(acessorios[4])
+            if 'Acess' in acessorios:
+                acessorios = str(td).split(acessorios)[1].split('<br/>\n')[0]
+            else:
+                acessorios = None
+
             if acessorios is not None:
                 temp_acessorios = acessorios.encode('utf-8').split('-')
                 acessorios = []
                 for ace in temp_acessorios:
                     acessorios.append(ace.strip())
-            else:
-                continue
             
             #Verifica se os acessorios do veiculo atendem os parametros da busca
             if param_opc_acessorios is not None:
@@ -200,6 +219,8 @@ for pag_leilao in pag_leiloes:
             if u'Lote' in marca_modelo[0].text:
                 lote = marca_modelo[1].text.encode('utf-8').strip()
                 marca_modelo = marca_modelo[2].find('font').text.encode('utf-8').strip()
+            elif 'Lance Inicial' in marca_modelo[1].text:
+                marca_modelo = marca_modelo[0].find('font').text.encode('utf-8').strip()
             else:
                 marca_modelo = marca_modelo[1].find('font').text.encode('utf-8').strip()
             
@@ -221,7 +242,7 @@ for pag_leilao in pag_leiloes:
             writer.writerow([marca_modelo, ano, placa, acessorios, lance_inicial, maior_lance, obs, lote])
         
         #Espera cinco segundos para não sobrecarregar o site
-        time.sleep(1)
+        time.sleep(param_sleep)
 
     #Fecha arquivo csv deste leilao
     csv_leilao.close()
