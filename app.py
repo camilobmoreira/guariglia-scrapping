@@ -50,7 +50,7 @@ usage: app.py [options]
     [5] Valores devem ser separados por virgula, dentro de aspas e em maiusculo. Valores possiveis: DH, AR, VE, TE, MANUAL, CHAVE RESERVA, 5 LUGARES, BASICO. FLEX, GASOLINA, DIESEL. Exemplo: \'DH, AR, VE\'
 '''
 
-__version__ = '1.1'
+__version__ = '1.1.1'
 
 #Recebe parametros de busca do terminal
 try:  
@@ -134,6 +134,7 @@ for pag_leilao in pag_leiloes:
         
     #Cria um arquivo csv para cada leilao
     csv_leilao = open('dados_leilao_' + leilao + '.csv', 'w')
+    cont = 0
 
     writer = csv.writer(csv_leilao)
 
@@ -240,9 +241,11 @@ for pag_leilao in pag_leiloes:
                 continue            
             
             writer.writerow([marca_modelo, ano, placa, acessorios, lance_inicial, maior_lance, obs, lote])
+            cont += 1
         
         #Espera cinco segundos para não sobrecarregar o site
         time.sleep(param_sleep)
 
     #Fecha arquivo csv deste leilao
     csv_leilao.close()
+    print('Foram encontrados %i veiculos para o leilao %s' %(cont, leilao))
