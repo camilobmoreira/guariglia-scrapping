@@ -50,7 +50,7 @@ usage: app.py [options]
     [5] Valores devem ser separados por virgula, dentro de aspas e em maiusculo. Valores possiveis: DH, AR, VE, TE, MANUAL, CHAVE RESERVA, 5 LUGARES, BASICO. FLEX, GASOLINA, DIESEL. Exemplo: \'DH, AR, VE\'
 '''
 
-__version__ = '1.1.1'
+__version__ = '1.2.1'
 
 #Recebe parametros de busca do terminal
 try:  
@@ -138,7 +138,7 @@ for pag_leilao in pag_leiloes:
 
     writer = csv.writer(csv_leilao)
 
-    writer.writerow(['marca_modelo', 'ano', 'placa', 'acessorios','lance_inicial', 'maior_lance', 'obs', 'lote'])
+    writer.writerow(['marca_modelo', 'ano', 'placa', 'acessorios','lance_inicial', 'maior_lance', 'obs', 'info_comp', 'lote'])
 
     paginas = []
     paginas.append(pag_leilao)
@@ -168,10 +168,12 @@ for pag_leilao in pag_leiloes:
             td = tr.find('td', attrs={'width':'100%', 'align': 'left'})
 
             #Pega observação do veiculo
-            obs = td.find('font', attrs={'color':'#008080'}).find('b').text.encode('utf-8').strip() #fixme
+            obs = td.find('font', attrs={'color':'#008080'}).find('b').text.encode('utf-8').strip()
+
+            info_comp = tr.find('a', onclick=re.compile('javascript: open_lightbox'))['title'].encode('utf-8')
 
             #Verifica se a observacao esta de acordo com o parametro passado
-            if param_obs is not None and param_obs not in obs.lower():
+            if param_obs is not None and param_obs not in obs.lower() and param_obs not in info_comp.lower():
                 continue
 
             #Pega lance inicial do veiculo
@@ -240,7 +242,7 @@ for pag_leilao in pag_leiloes:
             if param_ano_min is not None and int(ano.split('/')[0]) < param_ano_min or param_ano_max is not None and int(ano.split('/')[1]) > param_ano_max:
                 continue            
             
-            writer.writerow([marca_modelo, ano, placa, acessorios, lance_inicial, maior_lance, obs, lote])
+            writer.writerow([marca_modelo, ano, placa, acessorios, lance_inicial, maior_lance, obs, info_comp, lote])
             cont += 1
         
         #Espera cinco segundos para não sobrecarregar o site
@@ -249,3 +251,4 @@ for pag_leilao in pag_leiloes:
     #Fecha arquivo csv deste leilao
     csv_leilao.close()
     print('Foram encontrados %i veiculos para o leilao %s' %(cont, leilao))
+print('Saindo...')
